@@ -47,7 +47,12 @@ export const authAPI = {
 // Zoho API
 export const zohoAPI = {
   getAuthorizedApps: () => api.get('/zoho/apps'),
-  getAppUrl: (appName) => api.get(`/zoho/apps/${appName}/url`)
+  getAppUrl: (appName) => api.get(`/zoho/apps/${appName}/url`),
+  // Fetch actual Zoho data via backend proxy
+  getPeopleData: () => api.get('/zoho/people/data'),
+  getCRMData: () => api.get('/zoho/crm/data'),
+  getDeskData: () => api.get('/zoho/desk/data'),
+  getBooksData: () => api.get('/zoho/books/data')
 };
 
 // Admin API

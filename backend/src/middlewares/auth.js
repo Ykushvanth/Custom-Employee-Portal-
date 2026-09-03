@@ -1,5 +1,5 @@
 const { verifyToken } = require('../utils/jwt');
-const { AuditLog } = require('../models');
+const { User, Role, AuditLog } = require('../models');
 
 // Middleware to authenticate JWT token
 const authenticate = async (req, res, next) => {
@@ -16,11 +16,41 @@ const authenticate = async (req, res, next) => {
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // Verify token
+    // Verify token and get user ID
     const decoded = verifyToken(token);
 
-    // Attach user info to request
-    req.user = decoded;
+    // Fetch fresh user data with current roles from database
+    const user = await User.findByPk(decoded.id, {
+      include: [{
+        model: Role,
+        as: 'roles',
+        through: { attributes: [] }
+      }],
+      attributes: { exclude: ['password'] }
+    });
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found or has been deleted'
+      });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: 'Account is inactive'
+      });
+    }
+
+    // Attach fresh user info with current roles to request
+    req.user = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      roles: user.roles
+    };
 
     next();
   } catch (error) {

@@ -55,6 +55,84 @@ const requireRole = (...allowedRoles) => {
 // Middleware to check if user has Admin role
 const requireAdmin = requireRole('Admin');
 
+// Middleware to check if user has specific permission
+const requirePermission = (...requiredPermissions) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Authentication required'
+        });
+      }
+
+      const { Permission } = require('../models');
+      const userRoles = req.user.roles || [];
+
+      // Admin always has all permissions
+      if (userRoles.some(role => role.name === 'Admin')) {
+        return next();
+      }
+
+      // Get all permissions for user's roles
+      const roleIds = userRoles.map(role => role.id);
+
+      // Fetch permissions for all user's roles
+      const { Role } = require('../models');
+      const rolesWithPermissions = await Role.findAll({
+        where: { id: roleIds },
+        include: [{
+          model: Permission,
+          as: 'permissions',
+          through: { attributes: [] }
+        }]
+      });
+
+      // Collect all permission names
+      const userPermissions = new Set();
+      rolesWithPermissions.forEach(role => {
+        role.permissions.forEach(perm => {
+          userPermissions.add(perm.name);
+        });
+      });
+
+      // Check if user has any of the required permissions
+      const hasPermission = requiredPermissions.some(perm => userPermissions.has(perm));
+
+      if (!hasPermission) {
+        // Log unauthorized access attempt
+        await AuditLog.create({
+          userId: req.user.id,
+          action: 'unauthorized_access',
+          resource: req.path,
+          details: {
+            requiredPermissions,
+            userPermissions: Array.from(userPermissions),
+            method: req.method
+          },
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+          status: 'failure'
+        });
+
+        return res.status(403).json({
+          success: false,
+          message: `Access denied. Required permission(s): ${requiredPermissions.join(', ')}`
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Permission check error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Authorization check failed',
+        error: error.message
+      });
+    }
+  };
+};
+
 // Middleware to check if user has permission to access Zoho app
 const requireZohoAccess = (zohoAppName) => {
   return async (req, res, next) => {
@@ -123,5 +201,6 @@ const requireZohoAccess = (zohoAppName) => {
 module.exports = {
   requireRole,
   requireAdmin,
+  requirePermission,
   requireZohoAccess
 };

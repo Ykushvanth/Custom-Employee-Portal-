@@ -161,8 +161,8 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Generate JWT token
-    const token = generateToken(user, user.roles);
+    // Generate JWT token (only contains user ID)
+    const token = generateToken(user.id);
 
     // Update last login
     user.lastLogin = new Date();

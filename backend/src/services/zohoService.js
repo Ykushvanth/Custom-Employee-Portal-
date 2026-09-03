@@ -1,8 +1,8 @@
 const axios = require('axios');
 require('dotenv').config();
 
-const ZOHO_TOKEN_URL = 'https://accounts.zoho.com/oauth/v2/token';
-const ZOHO_ACCOUNTS_URL = 'https://accounts.zoho.com';
+const ZOHO_TOKEN_URL = 'https://accounts.zoho.in/oauth/v2/token';
+const ZOHO_ACCOUNTS_URL = 'https://accounts.zoho.in';
 
 // In-memory cache for access token
 let accessTokenCache = {
@@ -19,6 +19,15 @@ const getAccessToken = async () => {
       return accessTokenCache.token;
     }
 
+    // Check if refresh token is configured
+    if (!process.env.ZOHO_REFRESH_TOKEN) {
+      throw new Error('ZOHO_REFRESH_TOKEN is not configured in .env file. Please follow the OAuth setup process.');
+    }
+
+    if (!process.env.ZOHO_CLIENT_ID || !process.env.ZOHO_CLIENT_SECRET) {
+      throw new Error('ZOHO_CLIENT_ID or ZOHO_CLIENT_SECRET is missing in .env file.');
+    }
+
     // Fetch new access token using refresh token
     console.log('Fetching new Zoho access token...');
     const response = await axios.post(ZOHO_TOKEN_URL, null, {
@@ -32,18 +41,24 @@ const getAccessToken = async () => {
 
     const { access_token, expires_in } = response.data;
 
+    // Validate that we actually got a token
+    if (!access_token) {
+      console.error('Zoho API response:', JSON.stringify(response.data, null, 2));
+      throw new Error('No access_token in Zoho API response. Check your refresh token validity.');
+    }
+
     // Cache the token (expires_in is in seconds, subtract 5 minutes for safety)
     accessTokenCache = {
       token: access_token,
       expiresAt: Date.now() + ((expires_in - 300) * 1000)
     };
 
-    console.log('Zoho access token obtained successfully');
+    console.log('✅ Zoho access token obtained successfully');
     return access_token;
 
   } catch (error) {
-    console.error('Failed to get Zoho access token:', error.response?.data || error.message);
-    throw new Error('Zoho authentication failed');
+    console.error('❌ Failed to get Zoho access token:', error.response?.data || error.message);
+    throw new Error(error.message || 'Zoho authentication failed');
   }
 };
 
@@ -94,13 +109,30 @@ const makeZohoRequest = async (appName, endpoint = '', method = 'GET', data = nu
 };
 
 // Generate Zoho OAuth authorization URL (for initial setup)
+// const getAuthorizationUrl = () => {
+//   // Using simplified scopes that are more universally available
+//   // You can customize these based on what's available in your Zoho API Console
+//   const params = new URLSearchParams({
+//     scope: 'ZohoCRM.modules.ALL,ZohoBooks.fullaccess.ALL',
+//     client_id: process.env.ZOHO_CLIENT_ID,
+//     response_type: 'code',
+//     redirect_uri: process.env.ZOHO_REDIRECT_URI,
+//     access_type: 'offline',
+//     prompt: 'consent'
+//   });
+
+//   return `${ZOHO_ACCOUNTS_URL}/oauth/v2/auth?${params.toString()}`;
+// };
+
 const getAuthorizationUrl = () => {
   const params = new URLSearchParams({
-    scope: 'ZohoPeople.forms.ALL,ZohoCRM.modules.ALL,ZohoDesk.tickets.ALL,ZohoBooks.fullaccess.ALL',
+    // Try different scope variations for Desk and People
+    scope: 'ZohoCRM.modules.ALL,ZohoBooks.fullaccess.ALL,Desk.tickets.READ,Desk.tickets.CREATE,ZohoPeople.forms.READ',
     client_id: process.env.ZOHO_CLIENT_ID,
     response_type: 'code',
     redirect_uri: process.env.ZOHO_REDIRECT_URI,
-    access_type: 'offline'
+    access_type: 'offline',
+    prompt: 'consent'
   });
 
   return `${ZOHO_ACCOUNTS_URL}/oauth/v2/auth?${params.toString()}`;
