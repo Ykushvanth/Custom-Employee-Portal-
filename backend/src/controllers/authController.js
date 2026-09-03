@@ -1,4 +1,4 @@
-const { User, Role, AuditLog } = require('../models');
+const { User, Role, Permission, AuditLog } = require('../models');
 const { generateToken } = require('../utils/jwt');
 const { body, validationResult } = require('express-validator');
 
@@ -8,7 +8,7 @@ exports.registerValidation = [
   body('password')
     .isLength({ min: 6 })
     .withMessage('Password must be at least 6 characters')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/)
     .withMessage('Password must contain uppercase, lowercase, number and special character'),
   body('firstName').notEmpty().withMessage('First name is required'),
   body('lastName').notEmpty().withMessage('Last name is required')
@@ -103,7 +103,12 @@ exports.login = async (req, res) => {
       include: [{
         model: Role,
         as: 'roles',
-        through: { attributes: [] }
+        through: { attributes: [] },
+        include: [{
+          model: Permission,
+          as: 'permissions',
+          through: { attributes: [] }
+        }]
       }]
     });
 
@@ -192,7 +197,13 @@ exports.login = async (req, res) => {
           roles: user.roles.map(role => ({
             id: role.id,
             name: role.name,
-            zohoApp: role.zohoApp
+            zohoApp: role.zohoApp,
+            permissions: role.permissions ? role.permissions.map(p => ({
+              id: p.id,
+              name: p.name,
+              resource: p.resource,
+              action: p.action
+            })) : []
           }))
         }
       }
@@ -214,7 +225,12 @@ exports.getProfile = async (req, res) => {
       include: [{
         model: Role,
         as: 'roles',
-        through: { attributes: [] }
+        through: { attributes: [] },
+        include: [{
+          model: Permission,
+          as: 'permissions',
+          through: { attributes: [] }
+        }]
       }],
       attributes: { exclude: ['password'] }
     });
@@ -235,7 +251,18 @@ exports.getProfile = async (req, res) => {
         lastName: user.lastName,
         isActive: user.isActive,
         lastLogin: user.lastLogin,
-        roles: user.roles
+        roles: user.roles.map(role => ({
+          id: role.id,
+          name: role.name,
+          description: role.description,
+          zohoApp: role.zohoApp,
+          permissions: role.permissions ? role.permissions.map(p => ({
+            id: p.id,
+            name: p.name,
+            resource: p.resource,
+            action: p.action
+          })) : []
+        }))
       }
     });
   } catch (error) {

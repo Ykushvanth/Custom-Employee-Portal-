@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminAPI } from '../services/api';
-import { getUser, removeToken, isAdmin } from '../utils/auth';
+import { getUser, removeToken, isAdmin, hasPermission } from '../utils/auth';
 import UserManagement from '../components/UserManagement';
 import AuditLogs from '../components/AuditLogs';
 import PermissionManagement from '../components/PermissionManagement';
@@ -15,7 +15,13 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isAdmin()) {
+    // Check if user has any admin permissions
+    const canAccessAdmin = isAdmin() ||
+      hasPermission('manage_users') ||
+      hasPermission('manage_permissions') ||
+      hasPermission('view_audit_logs');
+
+    if (!canAccessAdmin) {
       navigate('/dashboard');
       return;
     }
@@ -95,29 +101,35 @@ const AdminPanel = () => {
         )}
 
         <div className="admin-tabs">
-          <button
-            className={`admin-tab ${activeTab === 'users' ? 'active' : ''}`}
-            onClick={() => setActiveTab('users')}
-          >
-            User Management
-          </button>
-          <button
-            className={`admin-tab ${activeTab === 'permissions' ? 'active' : ''}`}
-            onClick={() => setActiveTab('permissions')}
-          >
-            Permissions
-          </button>
-          <button
-            className={`admin-tab ${activeTab === 'audit' ? 'active' : ''}`}
-            onClick={() => setActiveTab('audit')}
-          >
-            Audit Logs
-          </button>
+          {(isAdmin() || hasPermission('manage_users')) && (
+            <button
+              className={`admin-tab ${activeTab === 'users' ? 'active' : ''}`}
+              onClick={() => setActiveTab('users')}
+            >
+              User Management
+            </button>
+          )}
+          {(isAdmin() || hasPermission('manage_permissions')) && (
+            <button
+              className={`admin-tab ${activeTab === 'permissions' ? 'active' : ''}`}
+              onClick={() => setActiveTab('permissions')}
+            >
+              Permissions
+            </button>
+          )}
+          {(isAdmin() || hasPermission('view_audit_logs')) && (
+            <button
+              className={`admin-tab ${activeTab === 'audit' ? 'active' : ''}`}
+              onClick={() => setActiveTab('audit')}
+            >
+              Audit Logs
+            </button>
+          )}
         </div>
 
-        {activeTab === 'users' && <UserManagement onUserChange={fetchStats} />}
-        {activeTab === 'permissions' && <PermissionManagement />}
-        {activeTab === 'audit' && <AuditLogs />}
+        {(isAdmin() || hasPermission('manage_users')) && activeTab === 'users' && <UserManagement onUserChange={fetchStats} />}
+        {(isAdmin() || hasPermission('manage_permissions')) && activeTab === 'permissions' && <PermissionManagement />}
+        {(isAdmin() || hasPermission('view_audit_logs')) && activeTab === 'audit' && <AuditLogs />}
       </div>
     </div>
   );

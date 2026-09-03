@@ -49,3 +49,28 @@ export const getUserRoles = () => {
   const user = getUser();
   return user?.roles || [];
 };
+
+export const getUserPermissions = () => {
+  const user = getUser();
+  if (!user || !user.roles) return [];
+
+  // Flatten all permissions from all roles
+  const permissions = [];
+  user.roles.forEach(role => {
+    if (role.permissions) {
+      permissions.push(...role.permissions);
+    }
+  });
+
+  // Remove duplicates by permission name
+  const uniquePermissions = Array.from(
+    new Map(permissions.map(p => [p.name, p])).values()
+  );
+
+  return uniquePermissions;
+};
+
+export const hasPermission = (permissionName) => {
+  const permissions = getUserPermissions();
+  return permissions.some(p => p.name === permissionName);
+};
