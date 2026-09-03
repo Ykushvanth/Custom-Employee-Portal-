@@ -123,7 +123,7 @@ const UserManagement = ({ onUserChange }) => {
     <div className="section-card">
       <div className="section-header">
         <h2>User Management</h2>
-        <button className="btn-primary" onClick={handleCreateUser}>
+        <button className="btn-primary" onClick={handleCreateUser} style={{ width: 'auto', padding: '8px 16px', flex: 'none' }}>
           Create User
         </button>
       </div>

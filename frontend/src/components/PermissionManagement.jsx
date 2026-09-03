@@ -109,7 +109,7 @@ const PermissionManagement = () => {
     <div className="section-card">
       <div className="section-header">
         <h2>Permission Management</h2>
-        <button className="btn-secondary" onClick={fetchData} disabled={updating}>
+        <button className="btn-secondary" onClick={fetchData} disabled={updating} style={{ width: 'auto', padding: '8px 16px', flex: 'none' }}>
           Refresh
         </button>
       </div>

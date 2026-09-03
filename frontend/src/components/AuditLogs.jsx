@@ -62,6 +62,7 @@ const AuditLogs = () => {
             setPage(1);
           }}
           className="btn-secondary"
+          style={{ width: 'auto', padding: '8px 16px', flex: 'none' }}
         >
           <option value="">All Actions</option>
           <option value="login_success">Login Success</option>
