@@ -9,7 +9,9 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
     ssl: {
       require: true,
       rejectUnauthorized: false
-    }
+    },
+    // Force IPv4 to avoid IPv6 connection issues on Render
+    family: 4
   },
   logging: process.env.NODE_ENV === 'development' ? console.log : false,
   pool: {
@@ -17,9 +19,7 @@ const sequelize = new Sequelize(process.env.DATABASE_URL, {
     min: 0,
     acquire: 30000,
     idle: 10000
-  },
-  // Force IPv4 to avoid IPv6 connection issues on Render
-  host: process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL).hostname : undefined
+  }
 });
 
 // Test connection
